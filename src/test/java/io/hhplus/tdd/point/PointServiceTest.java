@@ -290,4 +290,54 @@ class PointServiceTest {
     }
 
 
+    /*
+     * exception Test
+     *
+     */
+
+    @Test
+    @DisplayName("잘못된 금액 입력 시 예외 발생")
+    void charge_WithInvalidAmount_ShouldThrowValidationError()
+    {
+        // given
+        final Long userId = 1L;
+        final Long invalidAmount = -1_234L; // 충전 불가능한 금액임
+
+        // when & then
+        assertThatCode(() -> pointService.charge(userId, invalidAmount))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("최소 10_000원 이상 충전 가능합니다");
+    }
+
+    @Test
+    @DisplayName("음수 금액 사용 시 예외 발생")
+    void use_WhenAmountIsNegative_ShouldThrowValidationError()
+    {
+        // given
+        final Long amount = -20_000L;
+        final Long userId = 1L;
+
+        // when & then
+        assertThatCode(() -> pointService.use(userId, amount)).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("사용금액은 0원 이상이여야 합니다");
+
+    }
+
+    @Test
+    @DisplayName("조회 시 히스토리가 null일 경우 빈 리스트 반환")
+    void getPointHistories_WhenNullReturned_ShouldReturnEmptyList() {
+        // given
+        final Long userId = 1L;
+
+        // Mock 설정: 히스토리 결과가 null인 상황
+        when(pointHistoryTable.selectAllByUserId(userId)).thenReturn(null);
+
+        // when
+        List<PointHistory> histories = pointService.getPointHistories(userId);
+
+        // then
+        assertThat(histories).isEmpty(); // 반환된 리스트가 비어 있는지 검증
+        verify(pointHistoryTable).selectAllByUserId(userId); // 메서드 호출 검증
+    }
+
 }
