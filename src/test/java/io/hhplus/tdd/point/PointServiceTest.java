@@ -161,4 +161,37 @@ class PointServiceTest {
         // then
         assertThat(userPoint).isEqualTo(0);
     }
+
+
+    /*
+     * get Test
+     *
+     */
+
+    @Test
+    @DisplayName("정상 조회 시 잔고 반환")
+    void getPoints_WithValidUser_ShouldReturnBalance()
+    {
+        // given
+        final Long amount = 20_000L;
+        final Long userId = 1L;
+        when(userPointTable.selectById(userId))
+                .thenReturn(new UserPoint(userId, amount, System.currentTimeMillis()));
+
+        // when & then
+        assertThat(pointService.select(userId).point()).isEqualTo(amount);
+    }
+
+    @Test
+    @DisplayName("신규 유저는 초기 포인트 0")
+    void getPoints_NewUser_ShouldReturnZero()
+    {
+        // given
+        final Long userId = 1L;
+        when(userPointTable.selectById(userId))
+                .thenReturn(UserPoint.empty(userId));
+
+        // when & then
+        assertThat(pointService.select(userId).point()).isEqualTo(0);
+    }
 }

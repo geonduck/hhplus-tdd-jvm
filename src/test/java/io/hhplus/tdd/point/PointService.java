@@ -39,6 +39,10 @@ public class PointService {
         return updatedPoint(userId, userPoint.point() - amount, TransactionType.USE);
     }
 
+    public UserPoint select(final Long userId) {
+        return userPointTable.selectById(userId);
+    }
+
     public UserPoint updatedPoint(final Long userId, final Long updatedPoint, TransactionType type) {
 
         if (updatedPoint > 10_000_000L) {
