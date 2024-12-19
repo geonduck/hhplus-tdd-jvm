@@ -34,10 +34,18 @@ public class PointService {
         return amount;
     }
 
+    public UserPoint use(final Long userId, final Long amount) {
+        UserPoint userPoint = userPointTable.selectById(userId);
+        return updatedPoint(userId, userPoint.point() - amount, TransactionType.USE);
+    }
+
     public UserPoint updatedPoint(final Long userId, final Long updatedPoint, TransactionType type) {
 
         if (updatedPoint > 10_000_000L) {
             throw new IllegalStateException("최대 10_000_000포인트까지 보유 가능합니다");
+        }
+        if (updatedPoint < 0) {
+            throw new IllegalStateException("잔고가 부족하여 사용이 불가능 합니다");
         }
 
         UserPoint updatedUserPoint = userPointTable.insertOrUpdate(userId, updatedPoint);
