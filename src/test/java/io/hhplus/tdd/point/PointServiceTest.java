@@ -10,6 +10,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Collections;
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -194,4 +197,97 @@ class PointServiceTest {
         // when & then
         assertThat(pointService.select(userId).point()).isEqualTo(0);
     }
+
+    /*
+     * history Test
+     *
+     */
+
+    @Test
+    @DisplayName("조회 시 히스토리가 없을 경우 빈 리스트 반환")
+    void getPointHistories_WhenNoHistory_ShouldReturnEmptyList() {
+        // given
+        final Long userId = 1L;
+
+        // Mock 설정: 히스토리 결과가 없는 상황
+        when(pointHistoryTable.selectAllByUserId(userId)).thenReturn(Collections.emptyList());
+
+        // when
+        List<PointHistory> histories = pointService.getPointHistories(userId);
+
+        // then
+        assertThat(histories).isEmpty(); // 반환된 리스트가 비어 있는지 검증
+        verify(pointHistoryTable).selectAllByUserId(userId); // 메서드 호출 검증
+    }
+
+    @Test
+    @DisplayName("정상 조회 시 내역 반환")
+    void getPointHistories_WithValidUser_ShouldReturnHistories()
+    {
+        // given
+        final Long userId = 1L;
+        List<PointHistory> mockHistories = List.of(
+                new PointHistory(1L, userId, 10_000L, TransactionType.CHARGE, 1_000_000L),
+                new PointHistory(2L, userId, 5_000L, TransactionType.USE, 1_000_500L)
+        );
+
+        when(pointHistoryTable.selectAllByUserId(userId)).thenReturn(mockHistories);
+
+        // when
+        List<PointHistory> histories = pointService.getPointHistories(userId);
+
+        // then
+        assertThat(histories).hasSize(2);
+        assertThat(histories.get(0).amount()).isEqualTo(10_000L);
+        assertThat(histories.get(1).amount()).isEqualTo(5_000L);
+        verify(pointHistoryTable).selectAllByUserId(userId);
+    }
+
+    @Test
+    @DisplayName("충전 성공 기록 하기")
+    void charge_WhenValidAmount_ShouldRecordHistory()
+    {
+        // given
+        final Long userId = 1L;
+        final Long amount = 20_000L;
+        final Long existingPoint = 50_000L;
+
+        when(userPointTable.selectById(userId))
+                .thenReturn(new UserPoint(userId, existingPoint, System.currentTimeMillis()));
+
+        when(userPointTable.insertOrUpdate(userId, existingPoint + amount))
+                .thenReturn(new UserPoint(userId, existingPoint + amount, System.currentTimeMillis()));
+
+        // when
+        pointService.charge(userId, amount);
+
+        // then
+        verify(userPointTable).insertOrUpdate(userId, existingPoint + amount);
+        verify(pointHistoryTable).insert(anyLong(), anyLong(), eq(TransactionType.CHARGE), anyLong());
+    }
+
+    @Test
+    @DisplayName("사용 성공 기록 하기")
+    void use_WhenValidAmount_ShouldRecordHistory()
+    {
+        // given
+        final Long userId = 1L;
+        final Long amount = 20_000L;
+        final Long existingPoint = 30_000L;
+
+        when(userPointTable.selectById(userId))
+                .thenReturn(new UserPoint(userId, existingPoint, System.currentTimeMillis()));
+
+        when(userPointTable.insertOrUpdate(userId, existingPoint - amount))
+                .thenReturn(new UserPoint(userId, existingPoint - amount, System.currentTimeMillis()));
+
+        // when
+        pointService.use(userId, amount);
+
+        // then
+        verify(userPointTable).insertOrUpdate(userId, existingPoint - amount);
+        verify(pointHistoryTable).insert(anyLong(), anyLong(), eq(TransactionType.USE), anyLong());
+    }
+
+
 }
